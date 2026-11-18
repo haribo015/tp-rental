@@ -47,6 +47,32 @@ def test() -> None:
     test_python()
 
 
+def lint_java() -> None:
+    run([*gradle_command(), "checkstyleMain", "checkstyleTest"], cwd=CAR_SERVICE)
+
+
+def lint_python() -> None:
+    ruff = [sys.executable, "-m", "ruff"]
+    run([*ruff, "check", "app", "tests"], cwd=PRICING_SERVICE)
+    run([*ruff, "format", "--check", "app", "tests"], cwd=PRICING_SERVICE)
+
+
+def lint() -> None:
+    lint_java()
+    lint_python()
+
+
+def verify() -> None:
+    """Local quality gates: tests then linters, stopping at the first failure.
+
+    Docker images, Gitleaks, report upload and branch protection stay in the
+    GitHub Actions workflows.
+    """
+    test()
+    lint()
+    print("OK verify: tests and quality gates passed")
+
+
 def compose_up() -> None:
     require_command("docker")
     run(["docker", "compose", "up", "--build", "--detach"])
@@ -124,6 +150,10 @@ def main() -> int:
             "test",
             "test-java",
             "test-python",
+            "lint",
+            "lint-java",
+            "lint-python",
+            "verify",
             "compose-up",
             "compose-down",
             "smoke",
@@ -136,6 +166,10 @@ def main() -> int:
         "test": test,
         "test-java": test_java,
         "test-python": test_python,
+        "lint": lint,
+        "lint-java": lint_java,
+        "lint-python": lint_python,
+        "verify": verify,
         "compose-up": compose_up,
         "compose-down": compose_down,
         "smoke": smoke,
