@@ -26,8 +26,11 @@ def run(command: list[str], *, cwd: Path = ROOT) -> None:
 
 
 def gradle_command() -> list[str]:
+    # Absolute path: `cmd` may ignore the current directory when resolving
+    # executables (NoDefaultCurrentDirectoryInExePath), so a bare
+    # "gradlew.bat" is not reliable on Windows.
     if os.name == "nt":
-        return ["cmd", "/c", "gradlew.bat"]
+        return ["cmd", "/c", str(CAR_SERVICE / "gradlew.bat")]
     return ["./gradlew"]
 
 
