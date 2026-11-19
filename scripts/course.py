@@ -26,8 +26,11 @@ def run(command: list[str], *, cwd: Path = ROOT) -> None:
 
 
 def gradle_command() -> list[str]:
+    # Absolute path: `cmd` may ignore the current directory when resolving
+    # executables (NoDefaultCurrentDirectoryInExePath), so a bare
+    # "gradlew.bat" is not reliable on Windows.
     if os.name == "nt":
-        return ["cmd", "/c", "gradlew.bat"]
+        return ["cmd", "/c", str(CAR_SERVICE / "gradlew.bat")]
     return ["./gradlew"]
 
 
@@ -42,6 +45,32 @@ def test_python() -> None:
 def test() -> None:
     test_java()
     test_python()
+
+
+def lint_java() -> None:
+    run([*gradle_command(), "checkstyleMain", "checkstyleTest"], cwd=CAR_SERVICE)
+
+
+def lint_python() -> None:
+    ruff = [sys.executable, "-m", "ruff"]
+    run([*ruff, "check", "app", "tests"], cwd=PRICING_SERVICE)
+    run([*ruff, "format", "--check", "app", "tests"], cwd=PRICING_SERVICE)
+
+
+def lint() -> None:
+    lint_java()
+    lint_python()
+
+
+def verify() -> None:
+    """Local quality gates: tests then linters, stopping at the first failure.
+
+    Docker images, Gitleaks, report upload and branch protection stay in the
+    GitHub Actions workflows.
+    """
+    test()
+    lint()
+    print("OK verify: tests and quality gates passed")
 
 
 def compose_up() -> None:
@@ -121,6 +150,10 @@ def main() -> int:
             "test",
             "test-java",
             "test-python",
+            "lint",
+            "lint-java",
+            "lint-python",
+            "verify",
             "compose-up",
             "compose-down",
             "smoke",
@@ -133,6 +166,10 @@ def main() -> int:
         "test": test,
         "test-java": test_java,
         "test-python": test_python,
+        "lint": lint,
+        "lint-java": lint_java,
+        "lint-python": lint_python,
+        "verify": verify,
         "compose-up": compose_up,
         "compose-down": compose_down,
         "smoke": smoke,
